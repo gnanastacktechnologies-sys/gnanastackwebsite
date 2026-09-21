@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   Inbox,
   FolderKanban,
@@ -18,6 +18,8 @@ import {
   ArrowDown,
   ArrowUpDown,
   ListOrdered,
+  Globe,
+  Home,
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -224,6 +226,13 @@ export const AdminDashboard = () => {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              className="px-4 py-2 rounded-xl bg-gnana-cyan/10 border border-gnana-cyan/30 text-gnana-cyan hover:bg-gnana-cyan/20 text-xs font-semibold font-mono transition-colors flex items-center gap-2"
+              title="Go to Main Website"
+            >
+              <Globe className="w-4 h-4" /> View Main Website
+            </Link>
             <button
               onClick={fetchDashboardData}
               className="p-2.5 rounded-xl bg-gnana-dark border border-white/10 text-gnana-muted hover:text-gnana-cyan transition-colors"
@@ -232,7 +241,10 @@ export const AdminDashboard = () => {
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
-              onClick={logout}
+              onClick={() => {
+                logout();
+                navigate('/admin/login');
+              }}
               className="px-4 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/20 transition-colors flex items-center gap-2"
             >
               <LogOut className="w-4 h-4" /> Sign Out

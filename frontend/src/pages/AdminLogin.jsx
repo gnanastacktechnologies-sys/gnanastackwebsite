@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, AlertCircle, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Lock, Mail, AlertCircle, ArrowRight, ArrowLeft, Eye, EyeOff, Globe } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 import { Logo } from '../components/ui/Logo';
@@ -122,6 +122,17 @@ export const AdminLogin = () => {
               )}
             </button>
           </form>
+
+          {/* Link back to home website */}
+          <div className="pt-4 border-t border-white/10 text-center">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 text-xs font-mono text-gnana-cyan hover:text-gnana-teal transition-colors group"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-1 transition-transform" />
+              <span>Back to Main Website</span>
+            </Link>
+          </div>
         </div>
       </div>
     </PageTransition>
