@@ -2,11 +2,13 @@ import dotenv from 'dotenv';
 import { connectDB } from '../config/db.js';
 import { User } from '../models/User.js';
 import { CompanyInfo } from '../models/CompanyInfo.js';
+import { Project } from '../models/Project.js';
 import { defaultCompanyInfo } from '../controllers/companyController.js';
+import { sampleProjects } from '../controllers/projectController.js';
 
 dotenv.config();
 
-const seedAdminOnly = async () => {
+const seedDB = async () => {
   const isConnected = await connectDB();
   if (!isConnected) {
     console.log('[Seed]: Skipping database seed as MongoDB is offline.');
@@ -14,7 +16,7 @@ const seedAdminOnly = async () => {
   }
 
   try {
-    // 1. Seed Admin User Only
+    // 1. Seed Admin User
     const adminEmail = process.env.ADMIN_EMAIL || 'gnanastacktechnologies@gmail.com';
     const adminPassword = process.env.ADMIN_PASSWORD || 'Gnana@123';
 
@@ -34,7 +36,17 @@ const seedAdminOnly = async () => {
       console.log('[Seed Success]: Company contact info initialized.');
     }
 
-    console.log('[Seed Complete]: Only Admin credentials initialized. Projects and Services are managed strictly via Admin CMS.');
+    // 3. Ensure Projects initialized if empty in MongoDB Atlas
+    const projectCount = await Project.countDocuments({});
+    if (projectCount === 0) {
+      const projectsToInsert = sampleProjects.map(({ _id, ...rest }) => rest);
+      await Project.insertMany(projectsToInsert);
+      console.log('[Seed Success]: Default projects (GVehicle, GDairy, WebVault) populated into MongoDB Atlas.');
+    } else {
+      console.log(`[Seed Info]: MongoDB Atlas already contains ${projectCount} project(s).`);
+    }
+
+    console.log('[Seed Complete]: Database successfully initialized.');
     process.exit(0);
   } catch (error) {
     console.error(`[Seed Error]: ${error.message}`);
@@ -42,4 +54,4 @@ const seedAdminOnly = async () => {
   }
 };
 
-seedAdminOnly();
+seedDB();

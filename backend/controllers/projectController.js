@@ -25,6 +25,7 @@ export const sampleProjects = [
     status: 'Production Ready',
     featured: true,
     published: true,
+    order: 1,
     createdAt: new Date().toISOString(),
   },
   {
@@ -51,6 +52,7 @@ export const sampleProjects = [
     status: 'Production Ready',
     featured: true,
     published: true,
+    order: 2,
     createdAt: new Date().toISOString(),
   },
   {
@@ -77,13 +79,14 @@ export const sampleProjects = [
     status: 'Production Ready',
     featured: true,
     published: true,
+    order: 3,
     createdAt: new Date().toISOString(),
   },
 ];
 
 export const getProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ published: true }).sort({ createdAt: -1 });
+    const projects = await Project.find({ published: true }).sort({ order: 1, createdAt: -1 });
     return res.json({ success: true, projects });
   } catch (error) {
     return res.json({ success: true, projects: sampleProjects });
@@ -92,7 +95,7 @@ export const getProjects = async (req, res) => {
 
 export const getAdminProjects = async (req, res) => {
   try {
-    const projects = await Project.find({}).sort({ createdAt: -1 });
+    const projects = await Project.find({}).sort({ order: 1, createdAt: -1 });
     return res.json({ success: true, projects });
   } catch (error) {
     return res.json({ success: true, projects: [] });
@@ -122,7 +125,14 @@ export const getProjectBySlug = async (req, res) => {
 
 export const createProject = async (req, res) => {
   try {
-    const project = new Project(req.body);
+    const projectData = { ...req.body };
+    if (projectData.order === undefined || projectData.order === null || projectData.order === '') {
+      const highestProject = await Project.findOne().sort({ order: -1 });
+      projectData.order = highestProject && typeof highestProject.order === 'number' ? highestProject.order + 1 : 1;
+    } else {
+      projectData.order = Number(projectData.order);
+    }
+    const project = new Project(projectData);
     await project.save();
     return res.status(201).json({ success: true, project });
   } catch (error) {
@@ -132,7 +142,11 @@ export const createProject = async (req, res) => {
 
 export const updateProject = async (req, res) => {
   try {
-    const project = await Project.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = { ...req.body };
+    if (updateData.order !== undefined) {
+      updateData.order = Number(updateData.order);
+    }
+    const project = await Project.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!project) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
@@ -146,6 +160,28 @@ export const deleteProject = async (req, res) => {
   try {
     await Project.findByIdAndDelete(req.params.id);
     return res.json({ success: true, message: 'Project deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const reorderProjects = async (req, res) => {
+  try {
+    const { projectOrders } = req.body; // Array of { id, order }
+    if (!Array.isArray(projectOrders)) {
+      return res.status(400).json({ success: false, message: 'projectOrders array expected' });
+    }
+    const bulkOps = projectOrders.map((item) => ({
+      updateOne: {
+        filter: { _id: item.id },
+        update: { order: Number(item.order) },
+      },
+    }));
+    if (bulkOps.length > 0) {
+      await Project.bulkWrite(bulkOps);
+    }
+    const projects = await Project.find({}).sort({ order: 1, createdAt: -1 });
+    return res.json({ success: true, projects, message: 'Projects reordered successfully' });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

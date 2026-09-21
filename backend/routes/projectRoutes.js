@@ -6,6 +6,7 @@ import {
   createProject,
   updateProject,
   deleteProject,
+  reorderProjects,
 } from '../controllers/projectController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -15,6 +16,7 @@ router.get('/', getProjects);
 router.get('/admin/all', protect, getAdminProjects);
 router.get('/:slug', getProjectBySlug);
 router.post('/', protect, createProject);
+router.put('/reorder', protect, reorderProjects);
 router.put('/:id', protect, updateProject);
 router.delete('/:id', protect, deleteProject);
 

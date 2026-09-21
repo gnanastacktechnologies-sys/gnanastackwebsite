@@ -14,6 +14,10 @@ import {
   MapPin,
   Upload,
   Image,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ListOrdered,
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
@@ -47,7 +51,10 @@ export const AdminDashboard = () => {
     problem: '',
     solution: '',
     status: 'Production Ready',
+    order: '',
   });
+
+  const [sortMode, setSortMode] = useState('custom'); // 'custom' | 'newest' | 'oldest'
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -131,10 +138,55 @@ export const AdminDashboard = () => {
         problem: '',
         solution: '',
         status: 'Production Ready',
+        order: '',
       });
       fetchDashboardData();
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to create project');
+    }
+  };
+
+  const handleMoveProject = async (index, direction) => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= projects.length) return;
+
+    const updatedProjects = [...projects];
+    const temp = updatedProjects[index];
+    updatedProjects[index] = updatedProjects[targetIndex];
+    updatedProjects[targetIndex] = temp;
+
+    const projectOrders = updatedProjects.map((p, idx) => ({
+      id: p._id,
+      order: idx + 1,
+    }));
+
+    setProjects(updatedProjects.map((p, idx) => ({ ...p, order: idx + 1 })));
+
+    try {
+      await axios.put(
+        '/api/projects/reorder',
+        { projectOrders },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+    } catch (err) {
+      console.error('Reorder failed:', err);
+      fetchDashboardData();
+    }
+  };
+
+  const handleSaveProjectOrder = async (id, newOrderVal) => {
+    const parsedOrder = parseInt(newOrderVal, 10);
+    if (isNaN(parsedOrder)) return;
+
+    try {
+      await axios.put(
+        `/api/projects/${id}`,
+        { order: parsedOrder },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      fetchDashboardData();
+    } catch (err) {
+      alert('Failed to update project order');
     }
   };
 
@@ -293,46 +345,159 @@ export const AdminDashboard = () => {
         {/* TAB 2: PROJECT CMS */}
         {activeTab === 'projects' && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-white">Project CMS Catalog</h2>
-              <button
-                onClick={() => setShowAddProjectModal(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-gnana-blue to-gnana-cyan text-black text-xs font-bold flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" /> Add New Project
-              </button>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <FolderKanban className="w-5 h-5 text-gnana-cyan" /> Project CMS Catalog
+                </h2>
+                <p className="text-xs text-gnana-muted mt-1">
+                  Arrange project display order to control appearance on the main website.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Sort Mode Controls */}
+                <div className="flex items-center gap-1 p-1 bg-gnana-dark/80 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => setSortMode('custom')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors flex items-center gap-1.5 ${
+                      sortMode === 'custom'
+                        ? 'bg-gnana-cyan/20 text-gnana-cyan border border-gnana-cyan/30'
+                        : 'text-gnana-muted hover:text-white'
+                    }`}
+                  >
+                    <ListOrdered className="w-3.5 h-3.5" /> Order #
+                  </button>
+                  <button
+                    onClick={() => setSortMode('newest')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors flex items-center gap-1.5 ${
+                      sortMode === 'newest'
+                        ? 'bg-gnana-cyan/20 text-gnana-cyan border border-gnana-cyan/30'
+                        : 'text-gnana-muted hover:text-white'
+                    }`}
+                  >
+                    Newest
+                  </button>
+                  <button
+                    onClick={() => setSortMode('oldest')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors flex items-center gap-1.5 ${
+                      sortMode === 'oldest'
+                        ? 'bg-gnana-cyan/20 text-gnana-cyan border border-gnana-cyan/30'
+                        : 'text-gnana-muted hover:text-white'
+                    }`}
+                  >
+                    Oldest
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setShowAddProjectModal(true)}
+                  className="px-4 py-2 rounded-xl bg-gradient-to-r from-gnana-blue to-gnana-cyan text-black text-xs font-bold flex items-center gap-2 shadow-lg shadow-gnana-cyan/20 hover:shadow-gnana-cyan/40 transition-shadow"
+                >
+                  <Plus className="w-4 h-4" /> Add New Project
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Instruction Banner */}
+            <div className="p-3.5 rounded-xl bg-gnana-dark/60 border border-white/10 flex items-center justify-between gap-3 text-xs text-gnana-muted">
+              <span className="flex items-center gap-2">
+                <ArrowUpDown className="w-4 h-4 text-gnana-cyan" />
+                <span>Use <strong>▲ Move Up</strong> &amp; <strong>▼ Move Down</strong> buttons or edit the <strong>Order #</strong> to arrange site display sequence.</span>
+              </span>
+              <span className="font-mono text-gnana-cyan">{projects.length} Total Projects</span>
             </div>
 
             {/* Project List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {projects.map((proj) => (
-                <div
-                  key={proj._id}
-                  className="p-6 rounded-2xl glass-panel border border-white/10 space-y-4 flex flex-col justify-between"
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-mono text-gnana-cyan">{proj.category}</span>
-                      <span className="text-xs font-mono text-gnana-green">{proj.status}</span>
-                    </div>
-                    <h3 className="text-xl font-bold text-white">{proj.title}</h3>
-                    <p className="text-xs text-gnana-muted line-clamp-2">{proj.shortDescription}</p>
-                  </div>
+              {[...projects]
+                .sort((a, b) => {
+                  if (sortMode === 'newest') return new Date(b.createdAt) - new Date(a.createdAt);
+                  if (sortMode === 'oldest') return new Date(a.createdAt) - new Date(b.createdAt);
+                  return (a.order ?? 999) - (b.order ?? 999);
+                })
+                .map((proj, idx) => (
+                  <div
+                    key={proj._id}
+                    className="p-6 rounded-2xl glass-panel border border-white/10 space-y-4 flex flex-col justify-between relative group"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {/* Order Number Badge */}
+                          <span className="px-2.5 py-1 rounded-lg bg-gnana-cyan/10 border border-gnana-cyan/30 text-gnana-cyan text-xs font-mono font-bold">
+                            Order #{proj.order ?? idx + 1}
+                          </span>
+                          <span className="text-xs font-mono text-gnana-muted">{proj.category}</span>
+                        </div>
+                        <span className="text-xs font-mono text-gnana-green px-2.5 py-0.5 rounded-full bg-gnana-green/10 border border-gnana-green/20">
+                          {proj.status}
+                        </span>
+                      </div>
 
-                  <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                    <span className="text-xs font-mono text-gnana-muted">/projects/{proj.slug}</span>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleDeleteProject(proj._id)}
-                        className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs"
-                        title="Delete Project"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-xl font-bold text-white">{proj.title}</h3>
+                      </div>
+                      <p className="text-xs text-gnana-muted line-clamp-2 leading-relaxed">{proj.shortDescription}</p>
+                    </div>
+
+                    <div className="pt-4 border-t border-white/10 space-y-3">
+                      {/* Order Controls Bar */}
+                      <div className="flex items-center justify-between bg-gnana-dark/80 p-2 rounded-xl border border-white/5">
+                        <span className="text-xs font-mono text-gnana-muted pl-1">Order Sequence:</span>
+
+                        <div className="flex items-center gap-2">
+                          {/* Move Up / Down Buttons */}
+                          <button
+                            onClick={() => handleMoveProject(idx, 'up')}
+                            disabled={idx === 0 || sortMode !== 'custom'}
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-gnana-cyan/20 border border-white/10 text-gnana-cyan disabled:opacity-30 disabled:hover:bg-white/5 transition-colors"
+                            title="Move Up in Order"
+                          >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleMoveProject(idx, 'down')}
+                            disabled={idx === projects.length - 1 || sortMode !== 'custom'}
+                            className="p-1.5 rounded-lg bg-white/5 hover:bg-gnana-cyan/20 border border-white/10 text-gnana-cyan disabled:opacity-30 disabled:hover:bg-white/5 transition-colors"
+                            title="Move Down in Order"
+                          >
+                            <ArrowDown className="w-3.5 h-3.5" />
+                          </button>
+
+                          {/* Editable Order Number Input */}
+                          <div className="flex items-center gap-1 ml-1">
+                            <input
+                              type="number"
+                              defaultValue={proj.order ?? idx + 1}
+                              onBlur={(e) => handleSaveProjectOrder(proj._id, e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  handleSaveProjectOrder(proj._id, e.target.value);
+                                }
+                              }}
+                              className="w-14 px-2 py-1 rounded-lg bg-black/60 border border-white/20 text-xs font-mono text-center text-white focus:outline-none focus:border-gnana-cyan"
+                              title="Type order number & hit Enter"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Footer Info & Delete */}
+                      <div className="flex items-center justify-between pt-1">
+                        <span className="text-xs font-mono text-gnana-muted">/projects/{proj.slug}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleDeleteProject(proj._id)}
+                            className="p-2 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 text-xs transition-colors flex items-center gap-1 font-mono"
+                            title="Delete Project"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         )}
@@ -518,12 +683,29 @@ export const AdminDashboard = () => {
               </div>
 
               <div>
-                <label className="text-xs font-mono text-gnana-muted">Technologies (comma separated)</label>
+                <label className="text-xs font-mono text-gnana-muted flex items-center justify-between">
+                  <span>Technologies (comma separated)</span>
+                </label>
                 <input
                   type="text"
                   value={newProject.technologies}
                   onChange={(e) => setNewProject({ ...newProject, technologies: e.target.value })}
                   className="w-full px-4 py-2.5 rounded-xl bg-gnana-dark border border-white/10 text-white text-sm focus:outline-none focus:border-gnana-cyan"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-mono text-gnana-muted flex items-center justify-between mb-1">
+                  <span>Display Order Sequence</span>
+                  <span className="text-gnana-cyan text-[11px] font-normal">(1 = top of project list)</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={newProject.order}
+                  onChange={(e) => setNewProject({ ...newProject, order: e.target.value })}
+                  placeholder="Leave empty to auto-assign at end"
+                  className="w-full px-4 py-2.5 rounded-xl bg-gnana-dark border border-white/10 text-white text-sm focus:outline-none focus:border-gnana-cyan font-mono"
                 />
               </div>
 
