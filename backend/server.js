@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import mongoose from 'mongoose';
 import { connectDB } from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import projectRoutes from './routes/projectRoutes.js';
@@ -18,6 +19,14 @@ const PORT = process.env.PORT || 17200;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
+// Ensure Database is connected on each incoming request (required for Serverless environments like Vercel)
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState !== 1) {
+    await connectDB();
+  }
+  next();
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -43,9 +52,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
 });
 
-// Start Server & DB connection
-connectDB().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 [GnanaStack Server] Running on http://0.0.0.0:${PORT} (Accessible on Local Network)`);
+// Start Server locally or on dedicated hosts
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 [GnanaStack Server] Running on http://0.0.0.0:${PORT}`);
+    });
   });
-});
+}
+
+export default app;
