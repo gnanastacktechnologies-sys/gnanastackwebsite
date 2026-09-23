@@ -28,6 +28,10 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Silence Chrome DevTools auto-discovery probes & browser favicon requests
+app.get('/.well-known/appspecific/com.chrome.devtools.json', (req, res) => res.status(204).end());
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
@@ -35,6 +39,16 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/technologies', technologyRoutes);
 app.use('/api/company', companyRoutes);
+
+// Root API Welcome / Status
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Welcome to GnanaStack Technologies API Server',
+    status: 'online',
+    health: '/api/health',
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // Health Check
 app.get('/api/health', (req, res) => {
